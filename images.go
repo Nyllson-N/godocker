@@ -9,7 +9,7 @@ func ListImages() ([]Image, error) {
 
 // ListImages lista as imagens locais.
 func (c *Client) ListImages() ([]Image, error) {
-	data, err := c.get("/v1.41/images/json")
+	data, err := c.get("/images/json")
 	if err != nil {
 		return nil, err
 	}

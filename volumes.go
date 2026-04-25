@@ -9,7 +9,7 @@ func ListVolumes() ([]Volume, error) {
 
 // ListVolumes lista os volumes Docker.
 func (c *Client) ListVolumes() ([]Volume, error) {
-	data, err := c.get("/v1.41/volumes")
+	data, err := c.get("/volumes")
 	if err != nil {
 		return nil, err
 	}

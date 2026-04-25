@@ -21,11 +21,15 @@ import (
 // TRANSPORT
 // ══════════════════════════════════════════════════════════════════════════════
 
+// APIVersion padrão. Pode ser sobrescrito via DOCKER_API_VERSION ou Client.APIVersion.
+const defaultAPIVersion = "v1.47"
+
 // Client é o cliente Docker. Use New() ou DefaultClient.
 type Client struct {
-	mode    string // "unix" | "tcp"
-	baseURL string
-	http    *http.Client
+	mode       string // "unix" | "tcp"
+	baseURL    string
+	APIVersion string // ex: "v1.44", "v1.47" — padrão: defaultAPIVersion
+	http       *http.Client
 }
 
 // Mode retorna o modo de conexão detectado: "unix" ou "tcp".
@@ -33,6 +37,17 @@ func (c *Client) Mode() string { return c.mode }
 
 // BaseURL retorna a URL base usada nas requisições.
 func (c *Client) BaseURL() string { return c.baseURL }
+
+// apiBase retorna o prefixo versionado: /v1.47
+func (c *Client) apiBase() string {
+	if c.APIVersion != "" {
+		return "/" + c.APIVersion
+	}
+	if v := os.Getenv("DOCKER_API_VERSION"); v != "" {
+		return "/" + v
+	}
+	return "/" + defaultAPIVersion
+}
 
 // DefaultClient é o cliente global inicializado automaticamente na startup.
 // Detecta o ambiente uma única vez: DOCKER_HOST → Windows → WSL2 → Linux → fallback TCP.
@@ -172,16 +187,16 @@ func (c *Client) request(method, path string, body any) ([]byte, int, error) {
 }
 
 func (c *Client) get(path string) ([]byte, error) {
-	data, _, err := c.request("GET", path, nil)
+	data, _, err := c.request("GET", c.apiBase()+path, nil)
 	return data, err
 }
 
 func (c *Client) post(path string, body any) ([]byte, error) {
-	data, _, err := c.request("POST", path, body)
+	data, _, err := c.request("POST", c.apiBase()+path, body)
 	return data, err
 }
 
 func (c *Client) delete(path string) (int, error) {
-	_, code, err := c.request("DELETE", path, nil)
+	_, code, err := c.request("DELETE", c.apiBase()+path, nil)
 	return code, err
 }

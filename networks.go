@@ -22,7 +22,7 @@ func RenameNetwork(oldName, newName string) (string, error)                     
 
 // ListNetworks retorna todas as redes Docker.
 func (c *Client) ListNetworks() ([]Network, error) {
-	data, err := c.get("/v1.41/networks")
+	data, err := c.get("/networks")
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (c *Client) ListNetworks() ([]Network, error) {
 // InspectNetwork retorna detalhes de uma rede (ID ou nome),
 // incluindo os containers conectados.
 func (c *Client) InspectNetwork(id string) (*Network, error) {
-	data, err := c.get("/v1.41/networks/" + id + "?verbose=true")
+	data, err := c.get("/networks/" + id + "?verbose=true")
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (c *Client) CreateNetwork(opts NetworkCreateOptions) (string, error) {
 	if opts.Driver == "" {
 		opts.Driver = "bridge"
 	}
-	data, err := c.post("/v1.41/networks/create", opts)
+	data, err := c.post("/networks/create", opts)
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +86,7 @@ func (c *Client) CreateNetwork(opts NetworkCreateOptions) (string, error) {
 // RemoveNetwork remove uma rede pelo ID ou nome.
 // A rede não pode ter containers ativos conectados.
 func (c *Client) RemoveNetwork(id string) error {
-	_, err := c.delete("/v1.41/networks/" + id)
+	_, err := c.delete("/networks/" + id)
 	return err
 }
 
@@ -106,7 +106,7 @@ func (c *Client) ConnectNetwork(networkID, containerID string, opts *NetworkConn
 		opts = &NetworkConnectOptions{}
 	}
 	opts.Container = containerID
-	_, err := c.post("/v1.41/networks/"+networkID+"/connect", opts)
+	_, err := c.post("/networks/"+networkID+"/connect", opts)
 	return err
 }
 
@@ -117,14 +117,14 @@ func (c *Client) DisconnectNetwork(networkID, containerID string, force bool) er
 		"Container": containerID,
 		"Force":     force,
 	}
-	_, err := c.post("/v1.41/networks/"+networkID+"/disconnect", body)
+	_, err := c.post("/networks/"+networkID+"/disconnect", body)
 	return err
 }
 
 // PruneNetworks remove todas as redes sem containers conectados.
 // Retorna os nomes das redes removidas.
 func (c *Client) PruneNetworks() ([]string, error) {
-	data, err := c.post("/v1.41/networks/prune", nil)
+	data, err := c.post("/networks/prune", nil)
 	if err != nil {
 		return nil, err
 	}

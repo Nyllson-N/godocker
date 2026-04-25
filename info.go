@@ -10,7 +10,7 @@ func Info() (*DockerInfo, error) {
 
 // Info retorna informações gerais do daemon Docker.
 func (c *Client) Info() (*DockerInfo, error) {
-	data, err := c.get("/v1.41/info")
+	data, err := c.get("/info")
 	if err != nil {
 		return nil, err
 	}

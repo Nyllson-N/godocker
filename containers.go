@@ -46,7 +46,7 @@ func CPUPercent(s *Stats) float64 {
 
 // ListContainers lista containers. all=true inclui os parados.
 func (c *Client) ListContainers(all bool) ([]Container, error) {
-	path := "/v1.41/containers/json"
+	path := "/containers/json"
 	if all {
 		path += "?all=true"
 	}
@@ -60,7 +60,7 @@ func (c *Client) ListContainers(all bool) ([]Container, error) {
 
 // InspectContainer retorna detalhes completos de um container (ID ou nome).
 func (c *Client) InspectContainer(id string) (*ContainerInspect, error) {
-	data, err := c.get("/v1.41/containers/" + id + "/json")
+	data, err := c.get("/containers/" + id + "/json")
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (c *Client) InspectContainer(id string) (*ContainerInspect, error) {
 
 // ContainerStats retorna um snapshot de uso de CPU e memória (stream=false).
 func (c *Client) ContainerStats(id string) (*Stats, error) {
-	data, err := c.get("/v1.41/containers/" + id + "/stats?stream=false")
+	data, err := c.get("/containers/" + id + "/stats?stream=false")
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (c *Client) ContainerStats(id string) (*Stats, error) {
 // Faz o parse do multiplexed stream do Docker:
 // cada frame tem header [type(1), 0,0,0, size(4 BE)] seguido do payload.
 func (c *Client) ContainerLogs(id string, tail int) (string, error) {
-	path := fmt.Sprintf("/v1.41/containers/%s/logs?stdout=true&stderr=true&tail=%d", id, tail)
+	path := fmt.Sprintf("/containers/%s/logs?stdout=true&stderr=true&tail=%d", id, tail)
 	data, err := c.get(path)
 	if err != nil {
 		return "", err
