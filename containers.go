@@ -76,15 +76,14 @@ func CPUPercent(s *Stats) float64 {
 // Chama o endpoint GET /containers/json da Docker Engine API.
 // Com all=true adiciona o parâmetro ?all=true na URL.
 func (c *Client) ListContainers(all bool) ([]Container, error) {
-	path := "/containers/json"
-	if all {
-		path += "?all=true" // sem esse parâmetro o Docker só retorna os que estão rodando
+	path := "/containers/json?all=true" // sempre busca todos
+	if !all {
+		path = "/containers/json" // só running quando explicitamente pedido
 	}
 	data, err := c.get(path)
 	if err != nil {
 		return nil, err
 	}
-	// o Docker retorna um array JSON → deserializa em []Container
 	var out []Container
 	return out, json.Unmarshal(data, &out)
 }
