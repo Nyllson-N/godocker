@@ -15,7 +15,7 @@ import (
 // all=false → retorna apenas containers em execução (estado "running")
 // all=true  → retorna todos os containers, incluindo os parados e com erro
 func ListContainers(all bool) ([]Container, error) {
-	return DefaultClient.ListContainers(all)
+	return DefaultClient.ListContainers()
 }
 
 // InspectContainer retorna os detalhes completos de um container.
@@ -75,12 +75,8 @@ func CPUPercent(s *Stats) float64 {
 // ListContainers lista os containers do Docker.
 // Chama o endpoint GET /containers/json da Docker Engine API.
 // Com all=true adiciona o parâmetro ?all=true na URL.
-func (c *Client) ListContainers(all bool) ([]Container, error) {
-	path := "/containers/json?all=true" // sempre busca todos
-	if !all {
-		path = "/containers/json" // só running quando explicitamente pedido
-	}
-	data, err := c.get(path)
+func (c *Client) ListContainers() ([]Container, error) {
+	data, err := c.get("/containers/json?all=true")
 	if err != nil {
 		return nil, err
 	}
