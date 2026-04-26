@@ -1,3 +1,3 @@
 module github.com/Nyllson-N/godocker
 
-go 1.21
+go 1.22

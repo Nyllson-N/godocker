@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,6 +24,9 @@ import (
 
 // APIVersion padrão. Pode ser sobrescrito via DOCKER_API_VERSION ou Client.APIVersion.
 const defaultAPIVersion = "v1.47"
+
+// minAPIVersion é a versão mínima aceita pelo daemon Docker moderno.
+const minAPIVersion = "v1.44"
 
 // Client é o cliente Docker. Use New() ou DefaultClient.
 type Client struct {
@@ -41,12 +45,45 @@ func (c *Client) BaseURL() string { return c.baseURL }
 // apiBase retorna o prefixo versionado: /v1.47
 func (c *Client) apiBase() string {
 	if c.APIVersion != "" {
-		return "/" + c.APIVersion
+		return "/" + clampAPIVersion(c.APIVersion)
 	}
 	if v := os.Getenv("DOCKER_API_VERSION"); v != "" {
-		return "/" + v
+		return "/" + clampAPIVersion(v)
 	}
 	return "/" + defaultAPIVersion
+}
+
+// clampAPIVersion garante que a versão nunca seja inferior a minAPIVersion.
+// Normaliza o prefixo "v" automaticamente.
+func clampAPIVersion(v string) string {
+	if !strings.HasPrefix(v, "v") {
+		v = "v" + v
+	}
+	if apiVersionLess(v, minAPIVersion) {
+		return minAPIVersion
+	}
+	return v
+}
+
+// apiVersionLess retorna true se a versão a for mais antiga que b.
+// Ambas devem estar no formato "vMAJOR.MINOR".
+func apiVersionLess(a, b string) bool {
+	parse := func(s string) (int, int) {
+		s = strings.TrimPrefix(s, "v")
+		parts := strings.SplitN(s, ".", 2)
+		if len(parts) < 2 {
+			return 0, 0
+		}
+		maj, _ := strconv.Atoi(parts[0])
+		min, _ := strconv.Atoi(parts[1])
+		return maj, min
+	}
+	majA, minA := parse(a)
+	majB, minB := parse(b)
+	if majA != majB {
+		return majA < majB
+	}
+	return minA < minB
 }
 
 // DefaultClient é o cliente global inicializado automaticamente na startup.
@@ -64,8 +101,8 @@ func New() *Client {
 	// 1. DOCKER_HOST override
 	if host := os.Getenv("DOCKER_HOST"); host != "" {
 		raw := host
-		if strings.HasPrefix(raw, "unix://") {
-			return newUnix(strings.TrimPrefix(raw, "unix://"))
+		if path, ok := strings.CutPrefix(raw, "unix://"); ok {
+			return newUnix(path)
 		}
 		raw = strings.TrimPrefix(raw, "tcp://")
 		raw = strings.TrimPrefix(raw, "http://")
@@ -199,4 +236,16 @@ func (c *Client) post(path string, body any) ([]byte, error) {
 func (c *Client) delete(path string) (int, error) {
 	_, code, err := c.request("DELETE", c.apiBase()+path, nil)
 	return code, err
+}
+
+// RawGet faz um GET no endpoint Docker e retorna o JSON bruto sem nenhuma
+// transformação. Útil para obter todos os campos que o daemon retorna.
+// Ex: client.RawGet("/info"), client.RawGet("/containers/json?all=true")
+func (c *Client) RawGet(path string) (json.RawMessage, error) {
+	return c.get(path)
+}
+
+// RawGet faz um GET no endpoint usando o DefaultClient.
+func RawGet(path string) (json.RawMessage, error) {
+	return DefaultClient.RawGet(path)
 }

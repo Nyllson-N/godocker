@@ -2,73 +2,63 @@ package main
 
 import (
 	"fmt"
-	"runtime"
-	"strings"
-
-	docker "github.com/Nyllson-N/godocker"
+	"log"
+	"net/http"
 )
 
+// route descreve uma rota da API para exibição no endpoint raiz.
+type route struct {
+	Method      string `json:"method"`
+	Path        string `json:"path"`
+	Description string `json:"description"`
+	Params      string `json:"params,omitempty"`
+}
+
+// routes é a tabela de todas as rotas disponíveis — exibida em GET /.
+var routes = []route{
+	{"GET", "/", "lista todas as rotas disponíveis", ""},
+	{"GET", "/info", "informações completas do daemon Docker", ""},
+	{"GET", "/containers", "lista containers", "?all=1 inclui containers parados"},
+	{"GET", "/containers/{id}", "inspect completo de um container", "id = ID ou nome"},
+	{"GET", "/containers/{id}/stats", "uso de CPU, memória, rede e I/O de um container", "id = ID ou nome"},
+	{"GET", "/containers/{id}/logs", "logs de um container", "id = ID ou nome | ?tail=N (padrão 100)"},
+	{"GET", "/images", "lista imagens locais", ""},
+	{"GET", "/networks", "lista redes", ""},
+	{"GET", "/networks/{id}", "inspect completo de uma rede", "id = ID ou nome"},
+	{"GET", "/volumes", "lista volumes", ""},
+	{"GET", "/all", "todos os dados de uma vez (daemon + containers + images + networks + volumes)", "?all=1 inclui containers parados"},
+}
+
 func main() {
-	fmt.Printf("OS: %s | modo: %s → %s\n\n",
-		runtime.GOOS, docker.DefaultClient.Mode(), docker.DefaultClient.BaseURL())
+	mux := http.NewServeMux()
 
-	// ── Info do daemon ────────────────────────────────────────────────────────
-	info, err := docker.Info()
-	if err != nil {
-		fmt.Println("Erro ao conectar:", err)
-		return
-	}
-	fmt.Printf("Docker %s | %d rodando / %d total | %s\n\n",
-		info.ServerVersion, info.ContainersRunning, info.Containers, info.OperatingSystem)
+	// ── Raiz ──────────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /{$}", handleRoutes)
 
-	// ── Redes ─────────────────────────────────────────────────────────────────
-	fmt.Println("═══ Redes ═══")
-	networks, _ := docker.ListNetworks()
-	for _, n := range networks {
-		subnet := ""
-		if len(n.IPAM.Config) > 0 {
-			subnet = n.IPAM.Config[0].Subnet
-		}
-		fmt.Printf("  %-20s driver=%-10s scope=%-8s %s\n",
-			n.Name, n.Driver, n.Scope, subnet)
-	}
-
-	// ── Criar / remover rede de teste ─────────────────────────────────────────
-	fmt.Println("\n═══ Teste CreateNetwork / RemoveNetwork ═══")
-	id, err := docker.CreateNetwork(docker.NetworkCreateOptions{
-		Name:   "teste-godocker",
-		Driver: "bridge",
-		Labels: map[string]string{"criado-por": "godocker"},
-		IPAM: &docker.NetworkIPAM{
-			Driver: "default",
-			Config: []docker.IPAMConfig{
-				{Subnet: "172.30.0.0/24", Gateway: "172.30.0.1"},
-			},
-		},
-	})
-	if err != nil {
-		fmt.Println("Erro ao criar rede:", err)
-	} else {
-		fmt.Printf("Criada: %s\n", id)
-		_ = docker.RemoveNetwork(id)
-		fmt.Println("Removida.")
-	}
+	// ── Daemon ────────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /info", handleInfo)
 
 	// ── Containers ────────────────────────────────────────────────────────────
-	fmt.Println("\n═══ Containers ═══")
-	containers, _ := docker.ListContainers(true)
-	for _, c := range containers {
-		name := strings.TrimPrefix(c.Names[0], "/")
-		fmt.Printf("  [%s] %-30s %s\n", c.State, name, c.Status)
+	mux.HandleFunc("GET /containers", handleContainers)
+	mux.HandleFunc("GET /containers/{id}/stats", handleContainerStats)
+	mux.HandleFunc("GET /containers/{id}/logs", handleContainerLogs)
+	mux.HandleFunc("GET /containers/{id}", handleContainer)
 
-		if c.State == "running" {
-			stats, err := docker.ContainerStats(c.ID)
-			if err == nil {
-				cpu := docker.CPUPercent(stats)
-				mem := float64(stats.MemoryStats.Usage) / 1024 / 1024
-				lim := float64(stats.MemoryStats.Limit) / 1024 / 1024
-				fmt.Printf("         CPU: %.2f%% | Mem: %.1fMB / %.1fMB\n", cpu, mem, lim)
-			}
-		}
-	}
+	// ── Images ────────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /images", handleImages)
+
+	// ── Networks ──────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /networks", handleNetworks)
+	mux.HandleFunc("GET /networks/{id}", handleNetwork)
+
+	// ── Volumes ───────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /volumes", handleVolumes)
+
+	// ── Tudo de uma vez ───────────────────────────────────────────────────────
+	mux.HandleFunc("GET /all", handleAll)
+
+	const addr = ":8080"
+	fmt.Printf("servidor rodando em http://localhost%s\n", addr)
+	fmt.Printf("rotas disponíveis : GET http://localhost%s/\n\n", addr)
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
