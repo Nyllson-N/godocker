@@ -14,7 +14,7 @@ import (
 // ListContainers lista os containers do Docker.
 // all=false → retorna apenas containers em execução (estado "running")
 // all=true  → retorna todos os containers, incluindo os parados e com erro
-func ListContainers(all bool) ([]Container, error) {
+func ListContainers() ([]Container, error) {
 	return DefaultClient.ListContainers()
 }
 
