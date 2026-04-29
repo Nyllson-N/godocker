@@ -1,0 +1,3274 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API REST para gerenciar recursos Docker.",
+        "title": "godocker API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Utilitários"
+                ],
+                "summary": "Lista todas as rotas disponíveis",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.route"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/all": {
+            "get": {
+                "description": "daemon + containers + images + networks + volumes. Útil para dashboards.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Utilitários"
+                ],
+                "summary": "Todos os recursos em uma requisição",
+                "parameters": [
+                    {
+                        "enum": [
+                            0,
+                            1
+                        ],
+                        "type": "integer",
+                        "description": "1 = inclui containers parados",
+                        "name": "all",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/main.allData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Docker inacessível",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers": {
+            "get": {
+                "description": "Containers em execução. Use ?all=1 para incluir os parados.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Lista containers",
+                "parameters": [
+                    {
+                        "enum": [
+                            0,
+                            1
+                        ],
+                        "type": "integer",
+                        "description": "1 = inclui containers parados",
+                        "name": "all",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/godocker.Container"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Cria sem iniciar. Use POST /containers/{id}/start para iniciar.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Cria um container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Nome do container",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Opções de criação",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/godocker.ContainerCreateOptions"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/godocker.ContainerCreateResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "body inválido",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}": {
+            "get": {
+                "description": "Retorna todos os dados do container: config, rede, estado, mounts, etc.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Inspect completo de um container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID completo, prefixo ou nome do container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/godocker.ContainerInspect"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "container não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove permanentemente. ?force=1 remove mesmo estando em execução.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Remove um container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ou nome do container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            0,
+                            1
+                        ],
+                        "type": "integer",
+                        "description": "1 = remove mesmo rodando",
+                        "name": "force",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            0,
+                            1
+                        ],
+                        "type": "integer",
+                        "description": "1 = remove volumes anônimos",
+                        "name": "volumes",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/main.statusResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}/logs": {
+            "get": {
+                "description": "Últimas N linhas de log (stdout + stderr). Padrão: 100 linhas.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Logs do container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ou nome do container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de linhas (padrão 100)",
+                        "name": "tail",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro ao buscar logs",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}/restart": {
+            "post": {
+                "description": "Equivale a stop + start. O ?t=N aplica-se à fase de stop.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Reinicia um container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ou nome do container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Segundos antes do SIGKILL no stop",
+                        "name": "t",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/main.statusResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}/start": {
+            "post": {
+                "description": "Sem erro se já estiver rodando (idempotente).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Inicia um container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ou nome do container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/main.statusResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}/stats": {
+            "get": {
+                "description": "Snapshot de uso de recursos. Só funciona para containers em execução.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Métricas de CPU, memória, I/O e rede",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ou nome do container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/godocker.Stats"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "container parado ou erro",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{id}/stop": {
+            "post": {
+                "description": "Envia SIGTERM e aguarda. Após timeout envia SIGKILL. Retorna sucesso se já parado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Containers"
+                ],
+                "summary": "Para um container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ou nome do container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Segundos antes do SIGKILL (padrão 10)",
+                        "name": "t",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/main.statusResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/images": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Imagens"
+                ],
+                "summary": "Lista imagens locais",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/godocker.Image"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/info": {
+            "get": {
+                "description": "Versão, SO, número de containers, memória, plugins, etc.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Daemon"
+                ],
+                "summary": "Informações do daemon Docker",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/godocker.DockerInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Docker inacessível",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/networks": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Redes"
+                ],
+                "summary": "Lista redes Docker",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/godocker.Network"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/networks/{id}": {
+            "get": {
+                "description": "Driver, configuração IPAM e containers conectados.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Redes"
+                ],
+                "summary": "Inspect completo de uma rede",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ou nome da rede",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/godocker.Network"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "rede não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/volumes": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Volumes"
+                ],
+                "summary": "Lista volumes Docker",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.apiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/godocker.Volume"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "erro Docker",
+                        "schema": {
+                            "$ref": "#/definitions/main.apiResp"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "godocker.Address": {
+            "type": "object",
+            "properties": {
+                "Addr": {
+                    "description": "endereço IP (ex: \"172.17.0.2\")",
+                    "type": "string"
+                },
+                "PrefixLen": {
+                    "description": "tamanho do prefixo CIDR (ex: 16 para /16)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.AddressPool": {
+            "type": "object",
+            "properties": {
+                "Base": {
+                    "description": "rede base em CIDR (ex: \"10.0.0.0/8\")",
+                    "type": "string"
+                },
+                "Size": {
+                    "description": "tamanho de cada subnet alocada (ex: 24 para /24)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.BlkioEntry": {
+            "type": "object",
+            "properties": {
+                "major": {
+                    "description": "número major do dispositivo (ex: 8 para /dev/sda)",
+                    "type": "integer"
+                },
+                "minor": {
+                    "description": "número minor do dispositivo (ex: 0 para /dev/sda)",
+                    "type": "integer"
+                },
+                "op": {
+                    "description": "operação: \"Read\", \"Write\", \"Total\", \"Sync\", \"Async\"",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "valor da métrica (bytes ou contagem)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.BlkioStats": {
+            "type": "object",
+            "properties": {
+                "io_merged_recursive": {
+                    "description": "operações mescladas",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                },
+                "io_queue_recursive": {
+                    "description": "operações na fila",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                },
+                "io_service_bytes_recursive": {
+                    "description": "bytes lidos/escritos",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                },
+                "io_service_time_recursive": {
+                    "description": "tempo de serviço",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                },
+                "io_serviced_recursive": {
+                    "description": "número de operações",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                },
+                "io_time_recursive": {
+                    "description": "tempo de uso do dispositivo",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                },
+                "io_wait_time_recursive": {
+                    "description": "tempo de espera",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                },
+                "sectors_recursive": {
+                    "description": "setores acessados",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.BlkioEntry"
+                    }
+                }
+            }
+        },
+        "godocker.CPUStats": {
+            "type": "object",
+            "properties": {
+                "cpu_usage": {
+                    "description": "contadores de uso de CPU",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.CPUUsage"
+                        }
+                    ]
+                },
+                "online_cpus": {
+                    "description": "número de CPUs lógicas disponíveis",
+                    "type": "integer"
+                },
+                "system_cpu_usage": {
+                    "description": "uso total do sistema (todos os processos)",
+                    "type": "integer"
+                },
+                "throttling_data": {
+                    "description": "dados de throttling de CPU",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ThrottlingData"
+                        }
+                    ]
+                }
+            }
+        },
+        "godocker.CPUUsage": {
+            "type": "object",
+            "properties": {
+                "percpu_usage": {
+                    "description": "tempo por CPU lógica (ns)",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "total_usage": {
+                    "description": "total de tempo de CPU usado (ns)",
+                    "type": "integer"
+                },
+                "usage_in_kernelmode": {
+                    "description": "tempo no modo kernel (ns)",
+                    "type": "integer"
+                },
+                "usage_in_usermode": {
+                    "description": "tempo no modo usuário (ns)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.ClusterInfo": {
+            "type": "object",
+            "properties": {
+                "CreatedAt": {
+                    "description": "data de criação do cluster",
+                    "type": "string"
+                },
+                "DataPathPort": {
+                    "description": "porta do plano de dados (VXLAN)",
+                    "type": "integer"
+                },
+                "DefaultAddrPool": {
+                    "description": "pools de endereço padrão",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ID": {
+                    "description": "ID do cluster",
+                    "type": "string"
+                },
+                "RootRotationInProgress": {
+                    "description": "rotação de certificado raiz em progresso",
+                    "type": "boolean"
+                },
+                "Spec": {
+                    "description": "especificação do cluster",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.SwarmSpec"
+                        }
+                    ]
+                },
+                "SubnetSize": {
+                    "description": "tamanho da subnet por serviço",
+                    "type": "integer"
+                },
+                "UpdatedAt": {
+                    "description": "data da última atualização",
+                    "type": "string"
+                },
+                "Version": {
+                    "description": "versão do objeto Raft",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ObjectVersion"
+                        }
+                    ]
+                }
+            }
+        },
+        "godocker.Commit": {
+            "type": "object",
+            "properties": {
+                "Expected": {
+                    "description": "hash esperado (para verificação de integridade)",
+                    "type": "string"
+                },
+                "ID": {
+                    "description": "hash do commit atual",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.ConfigReference": {
+            "type": "object",
+            "properties": {
+                "Network": {
+                    "description": "nome da rede de configuração",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.Container": {
+            "type": "object",
+            "properties": {
+                "Command": {
+                    "description": "comando em execução",
+                    "type": "string"
+                },
+                "Created": {
+                    "description": "timestamp Unix de criação",
+                    "type": "integer"
+                },
+                "HostConfig": {
+                    "description": "resumo da configuração do host",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ContainerHostConfigSummary"
+                        }
+                    ]
+                },
+                "Id": {
+                    "description": "ID completo do container (64 hex)",
+                    "type": "string"
+                },
+                "Image": {
+                    "description": "imagem usada (ex: \"nginx:latest\")",
+                    "type": "string"
+                },
+                "ImageID": {
+                    "description": "ID da imagem (sha256:...)",
+                    "type": "string"
+                },
+                "Labels": {
+                    "description": "labels personalizados",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Mounts": {
+                    "description": "volumes e bind mounts",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.MountPoint"
+                    }
+                },
+                "Names": {
+                    "description": "nomes com \"/\" na frente (ex: [\"/meu-app\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "NetworkSettings": {
+                    "description": "resumo de redes conectadas",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ContainerNetworkSummary"
+                        }
+                    ]
+                },
+                "Ports": {
+                    "description": "mapeamentos de porta",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Port"
+                    }
+                },
+                "SizeRootFs": {
+                    "description": "tamanho total do filesystem (bytes)",
+                    "type": "integer"
+                },
+                "SizeRw": {
+                    "description": "tamanho da camada gravável (bytes)",
+                    "type": "integer"
+                },
+                "State": {
+                    "description": "\"running\", \"exited\", \"paused\", etc.",
+                    "type": "string"
+                },
+                "Status": {
+                    "description": "texto legível (ex: \"Up 2 hours\")",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.ContainerConfig": {
+            "type": "object",
+            "properties": {
+                "ArgsEscaped": {
+                    "description": "args escapados (Windows)",
+                    "type": "boolean"
+                },
+                "AttachStderr": {
+                    "description": "stderr conectado na criação",
+                    "type": "boolean"
+                },
+                "AttachStdin": {
+                    "description": "stdin conectado na criação",
+                    "type": "boolean"
+                },
+                "AttachStdout": {
+                    "description": "stdout conectado na criação",
+                    "type": "boolean"
+                },
+                "Cmd": {
+                    "description": "comando padrão do container",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Domainname": {
+                    "description": "domínio do container",
+                    "type": "string"
+                },
+                "Entrypoint": {
+                    "description": "entrypoint do container",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Env": {
+                    "description": "variáveis de ambiente (ex: [\"PATH=/usr/bin\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ExposedPorts": {
+                    "description": "portas declaradas (ex: {\"80/tcp\":{}})",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object"
+                    }
+                },
+                "Healthcheck": {
+                    "description": "config do healthcheck",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.HealthcheckConfig"
+                        }
+                    ]
+                },
+                "Hostname": {
+                    "description": "hostname do container",
+                    "type": "string"
+                },
+                "Image": {
+                    "description": "nome da imagem base",
+                    "type": "string"
+                },
+                "Labels": {
+                    "description": "labels do container",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "OnBuild": {
+                    "description": "instruções ONBUILD da imagem",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "OpenStdin": {
+                    "description": "stdin mantido aberto",
+                    "type": "boolean"
+                },
+                "Shell": {
+                    "description": "shell padrão para RUN, CMD, etc.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "StdinOnce": {
+                    "description": "fecha stdin após o primeiro cliente desconectar",
+                    "type": "boolean"
+                },
+                "StopSignal": {
+                    "description": "sinal de parada (padrão: SIGTERM)",
+                    "type": "string"
+                },
+                "StopTimeout": {
+                    "description": "segundos antes do SIGKILL",
+                    "type": "integer"
+                },
+                "Tty": {
+                    "description": "pseudo-TTY alocado",
+                    "type": "boolean"
+                },
+                "User": {
+                    "description": "usuário Unix (ex: \"1000\", \"www-data\")",
+                    "type": "string"
+                },
+                "Volumes": {
+                    "description": "volumes declarados (ex: {\"/data\":{}})",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object"
+                    }
+                },
+                "WorkingDir": {
+                    "description": "diretório de trabalho (WORKDIR)",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.ContainerCreateOptions": {
+            "type": "object",
+            "properties": {
+                "Cmd": {
+                    "description": "comando a executar (ex: [\"nginx\", \"-g\", \"daemon off;\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Entrypoint": {
+                    "description": "substitui o ENTRYPOINT da imagem",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Env": {
+                    "description": "variáveis de ambiente no formato \"KEY=valor\"",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ExposedPorts": {
+                    "description": "portas a expor (ex: {\"80/tcp\": {}})",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object"
+                    }
+                },
+                "HostConfig": {
+                    "description": "runtime: portas, volumes, restart, limites, etc.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.HostConfig"
+                        }
+                    ]
+                },
+                "Hostname": {
+                    "description": "hostname do container",
+                    "type": "string"
+                },
+                "Image": {
+                    "description": "imagem a usar — obrigatório (ex: \"nginx:latest\")",
+                    "type": "string"
+                },
+                "Labels": {
+                    "description": "labels para organização (ex: {\"app\": \"web\"})",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "OpenStdin": {
+                    "description": "mantém stdin aberto mesmo sem clientes conectados",
+                    "type": "boolean"
+                },
+                "StopSignal": {
+                    "description": "sinal de parada (padrão: \"SIGTERM\")",
+                    "type": "string"
+                },
+                "StopTimeout": {
+                    "description": "segundos de espera antes do SIGKILL",
+                    "type": "integer"
+                },
+                "Tty": {
+                    "description": "aloca pseudo-TTY (necessário para shells interativos)",
+                    "type": "boolean"
+                },
+                "User": {
+                    "description": "usuário:grupo para o processo (ex: \"1000:1000\")",
+                    "type": "string"
+                },
+                "Volumes": {
+                    "description": "pontos de montagem declarados (ex: {\"/data\": {}})",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object"
+                    }
+                },
+                "WorkingDir": {
+                    "description": "diretório de trabalho dentro do container",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.ContainerCreateResponse": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "description": "ID gerado pelo Docker (64 caracteres hexadecimais)",
+                    "type": "string"
+                },
+                "Warnings": {
+                    "description": "avisos não fatais emitidos pelo Docker (geralmente vazio)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "godocker.ContainerHostConfigSummary": {
+            "type": "object",
+            "properties": {
+                "NetworkMode": {
+                    "description": "modo de rede: \"bridge\", \"host\", \"none\", etc.",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.ContainerInspect": {
+            "type": "object",
+            "properties": {
+                "AppArmorProfile": {
+                    "description": "perfil AppArmor aplicado",
+                    "type": "string"
+                },
+                "Args": {
+                    "description": "argumentos passados ao executável",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Config": {
+                    "description": "configuração da imagem/container",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ContainerConfig"
+                        }
+                    ]
+                },
+                "Created": {
+                    "description": "data de criação (RFC3339)",
+                    "type": "string"
+                },
+                "Driver": {
+                    "description": "driver de storage (ex: \"overlay2\")",
+                    "type": "string"
+                },
+                "ExecIDs": {
+                    "description": "IDs de exec em andamento",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "GraphDriver": {
+                    "description": "dados do driver de armazenamento",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.GraphDriverData"
+                        }
+                    ]
+                },
+                "HostConfig": {
+                    "description": "configuração completa de runtime",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.HostConfig"
+                        }
+                    ]
+                },
+                "HostnamePath": {
+                    "description": "caminho do arquivo hostname no host",
+                    "type": "string"
+                },
+                "HostsPath": {
+                    "description": "caminho do /etc/hosts no host",
+                    "type": "string"
+                },
+                "Id": {
+                    "description": "ID completo (64 hex)",
+                    "type": "string"
+                },
+                "Image": {
+                    "description": "ID da imagem (sha256:...)",
+                    "type": "string"
+                },
+                "LogPath": {
+                    "description": "caminho do arquivo de log no host",
+                    "type": "string"
+                },
+                "MountLabel": {
+                    "description": "label SELinux para mounts",
+                    "type": "string"
+                },
+                "Mounts": {
+                    "description": "volumes e bind mounts ativos",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.MountPoint"
+                    }
+                },
+                "Name": {
+                    "description": "nome com \"/\" (ex: \"/meu-container\")",
+                    "type": "string"
+                },
+                "NetworkSettings": {
+                    "description": "configuração completa de rede",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.NetworkSettings"
+                        }
+                    ]
+                },
+                "Path": {
+                    "description": "executável do entrypoint",
+                    "type": "string"
+                },
+                "Platform": {
+                    "description": "plataforma (ex: \"linux\")",
+                    "type": "string"
+                },
+                "ProcessLabel": {
+                    "description": "label SELinux para processos",
+                    "type": "string"
+                },
+                "ResolvConfPath": {
+                    "description": "caminho do resolv.conf no host",
+                    "type": "string"
+                },
+                "RestartCount": {
+                    "description": "quantas vezes foi reiniciado",
+                    "type": "integer"
+                },
+                "SizeRootFs": {
+                    "description": "tamanho total do filesystem",
+                    "type": "integer"
+                },
+                "SizeRw": {
+                    "description": "tamanho da camada gravável",
+                    "type": "integer"
+                },
+                "State": {
+                    "description": "estado atual (running, exited, etc.)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ContainerState"
+                        }
+                    ]
+                }
+            }
+        },
+        "godocker.ContainerNetworkSummary": {
+            "type": "object",
+            "properties": {
+                "Networks": {
+                    "description": "mapa: nome_da_rede → configuração",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/godocker.EndpointSettings"
+                    }
+                }
+            }
+        },
+        "godocker.ContainerState": {
+            "type": "object",
+            "properties": {
+                "Dead": {
+                    "description": "true se está em estado morto (falha crítica)",
+                    "type": "boolean"
+                },
+                "Error": {
+                    "description": "mensagem de erro se falhou",
+                    "type": "string"
+                },
+                "ExitCode": {
+                    "description": "código de saída (0=sucesso, outro=erro)",
+                    "type": "integer"
+                },
+                "FinishedAt": {
+                    "description": "data/hora de fim (RFC3339, zero se ainda rodando)",
+                    "type": "string"
+                },
+                "Health": {
+                    "description": "resultado do healthcheck (nil se não configurado)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.Health"
+                        }
+                    ]
+                },
+                "OOMKilled": {
+                    "description": "true se foi morto por falta de memória",
+                    "type": "boolean"
+                },
+                "Paused": {
+                    "description": "true se está pausado (docker pause)",
+                    "type": "boolean"
+                },
+                "Pid": {
+                    "description": "PID do processo principal no host (0 se parado)",
+                    "type": "integer"
+                },
+                "Restarting": {
+                    "description": "true se está no processo de restart",
+                    "type": "boolean"
+                },
+                "Running": {
+                    "description": "true se está em execução agora",
+                    "type": "boolean"
+                },
+                "StartedAt": {
+                    "description": "data/hora de início (RFC3339)",
+                    "type": "string"
+                },
+                "Status": {
+                    "description": "\"created\", \"running\", \"paused\", \"restarting\", \"exited\", \"dead\"",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.DeviceMapping": {
+            "type": "object",
+            "properties": {
+                "CgroupPermissions": {
+                    "description": "permissões: \"r\", \"w\", \"m\" ou combinações",
+                    "type": "string"
+                },
+                "PathInContainer": {
+                    "description": "onde aparece dentro do container",
+                    "type": "string"
+                },
+                "PathOnHost": {
+                    "description": "caminho do dispositivo no host",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.DeviceRequest": {
+            "type": "object",
+            "properties": {
+                "Capabilities": {
+                    "description": "capacidades requeridas (ex: [[\"gpu\"]])",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Count": {
+                    "description": "-1 = todos os dispositivos",
+                    "type": "integer"
+                },
+                "DeviceIDs": {
+                    "description": "IDs específicos dos dispositivos",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Driver": {
+                    "description": "driver do dispositivo (ex: \"nvidia\")",
+                    "type": "string"
+                },
+                "Options": {
+                    "description": "opções adicionais do driver",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "godocker.DockerInfo": {
+            "type": "object",
+            "properties": {
+                "Architecture": {
+                    "description": "arquitetura: \"x86_64\", \"aarch64\", etc.",
+                    "type": "string"
+                },
+                "BridgeNfIp6tables": {
+                    "description": "bridge + ip6tables ativo",
+                    "type": "boolean"
+                },
+                "BridgeNfIptables": {
+                    "description": "bridge + netfilter/iptables ativo",
+                    "type": "boolean"
+                },
+                "CPUSet": {
+                    "description": "suporta cpuset (fixar em CPU específica)",
+                    "type": "boolean"
+                },
+                "CPUShares": {
+                    "description": "suporta CPU shares (peso relativo)",
+                    "type": "boolean"
+                },
+                "CgroupDriver": {
+                    "description": "driver de cgroup: \"cgroupfs\" ou \"systemd\"",
+                    "type": "string"
+                },
+                "CgroupVersion": {
+                    "description": "versão do cgroup: \"1\" ou \"2\"",
+                    "type": "string"
+                },
+                "ContainerdCommit": {
+                    "description": "── Versões de componentes ────────────────────────────────────────────────",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.Commit"
+                        }
+                    ]
+                },
+                "Containers": {
+                    "description": "── Contadores ────────────────────────────────────────────────────────────",
+                    "type": "integer"
+                },
+                "ContainersPaused": {
+                    "description": "containers pausados",
+                    "type": "integer"
+                },
+                "ContainersRunning": {
+                    "description": "containers em execução",
+                    "type": "integer"
+                },
+                "ContainersStopped": {
+                    "description": "containers parados",
+                    "type": "integer"
+                },
+                "CpuCfsPeriod": {
+                    "description": "suporta CFS period (controle fino de CPU)",
+                    "type": "boolean"
+                },
+                "CpuCfsQuota": {
+                    "description": "suporta CFS quota (limite de CPU)",
+                    "type": "boolean"
+                },
+                "Debug": {
+                    "description": "── Debug e goroutines ────────────────────────────────────────────────────",
+                    "type": "boolean"
+                },
+                "DefaultAddressPools": {
+                    "description": "pools de IP padrão para novas redes",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.AddressPool"
+                    }
+                },
+                "DefaultRuntime": {
+                    "description": "runtime padrão (normalmente \"runc\")",
+                    "type": "string"
+                },
+                "DockerRootDir": {
+                    "description": "diretório raiz do Docker (ex: \"/var/lib/docker\")",
+                    "type": "string"
+                },
+                "Driver": {
+                    "description": "── Storage ───────────────────────────────────────────────────────────────",
+                    "type": "string"
+                },
+                "DriverStatus": {
+                    "description": "status detalhado do driver (pares chave-valor)",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "ExperimentalBuild": {
+                    "description": "features experimentais ativas",
+                    "type": "boolean"
+                },
+                "HttpProxy": {
+                    "description": "proxy HTTP configurado",
+                    "type": "string"
+                },
+                "HttpsProxy": {
+                    "description": "proxy HTTPS configurado",
+                    "type": "string"
+                },
+                "ID": {
+                    "description": "── Identificação ─────────────────────────────────────────────────────────",
+                    "type": "string"
+                },
+                "IPv4Forwarding": {
+                    "description": "encaminhamento IPv4 habilitado",
+                    "type": "boolean"
+                },
+                "Images": {
+                    "description": "total de imagens locais",
+                    "type": "integer"
+                },
+                "IndexServerAddress": {
+                    "description": "── Rede e proxy ─────────────────────────────────────────────────────────",
+                    "type": "string"
+                },
+                "InitBinary": {
+                    "description": "binário init (ex: \"docker-init\")",
+                    "type": "string"
+                },
+                "InitCommit": {
+                    "description": "versão do docker-init",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.Commit"
+                        }
+                    ]
+                },
+                "Isolation": {
+                    "description": "isolamento (Windows: \"hyperv\", \"process\")",
+                    "type": "string"
+                },
+                "KernelMemoryTCP": {
+                    "description": "suporta limite de memória TCP do kernel",
+                    "type": "boolean"
+                },
+                "KernelVersion": {
+                    "description": "versão do kernel Linux",
+                    "type": "string"
+                },
+                "Labels": {
+                    "description": "── Labels e configurações ────────────────────────────────────────────────",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "LiveRestoreEnabled": {
+                    "description": "containers sobrevivem ao restart do daemon",
+                    "type": "boolean"
+                },
+                "LoggingDriver": {
+                    "description": "── Logging ───────────────────────────────────────────────────────────────",
+                    "type": "string"
+                },
+                "MemTotal": {
+                    "description": "memória total em bytes",
+                    "type": "integer"
+                },
+                "MemoryLimit": {
+                    "description": "── Capacidades do sistema (cgroup) ───────────────────────────────────────",
+                    "type": "boolean"
+                },
+                "NCPU": {
+                    "description": "── Sistema ───────────────────────────────────────────────────────────────",
+                    "type": "integer"
+                },
+                "NEventsListener": {
+                    "description": "número de listeners de eventos",
+                    "type": "integer"
+                },
+                "NGoroutines": {
+                    "description": "goroutines ativas no daemon",
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "hostname da máquina",
+                    "type": "string"
+                },
+                "NoProxy": {
+                    "description": "endereços que ignoram proxy",
+                    "type": "string"
+                },
+                "OSType": {
+                    "description": "tipo: \"linux\" ou \"windows\"",
+                    "type": "string"
+                },
+                "OSVersion": {
+                    "description": "versão do OS",
+                    "type": "string"
+                },
+                "OomKillDisable": {
+                    "description": "suporta desabilitar OOM killer",
+                    "type": "boolean"
+                },
+                "OomScoreAdj": {
+                    "description": "ajuste OOM do daemon",
+                    "type": "integer"
+                },
+                "OperatingSystem": {
+                    "description": "nome do OS (ex: \"Ubuntu 22.04.3 LTS\")",
+                    "type": "string"
+                },
+                "PidsLimit": {
+                    "description": "suporta limite de PIDs",
+                    "type": "boolean"
+                },
+                "Plugins": {
+                    "description": "plugins disponíveis por categoria",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.PluginsInfo"
+                        }
+                    ]
+                },
+                "ProductLicense": {
+                    "description": "licença (ex: \"Community Engine\")",
+                    "type": "string"
+                },
+                "RuncCommit": {
+                    "description": "versão do runc",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.Commit"
+                        }
+                    ]
+                },
+                "Runtimes": {
+                    "description": "runtimes disponíveis (runc, nvidia, etc.)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/godocker.Runtime"
+                    }
+                },
+                "SecurityOptions": {
+                    "description": "── Segurança e plugins ───────────────────────────────────────────────────",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ServerVersion": {
+                    "description": "versão do Docker (ex: \"27.0.3\")",
+                    "type": "string"
+                },
+                "SwapLimit": {
+                    "description": "suporta limite de swap",
+                    "type": "boolean"
+                },
+                "Swarm": {
+                    "description": "── Swarm ─────────────────────────────────────────────────────────────────",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.SwarmInfo"
+                        }
+                    ]
+                },
+                "Warnings": {
+                    "description": "── Avisos ────────────────────────────────────────────────────────────────",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "godocker.EndpointIPAMConfig": {
+            "type": "object",
+            "properties": {
+                "IPv4Address": {
+                    "description": "IP fixo (ex: \"172.18.0.10\")",
+                    "type": "string"
+                },
+                "IPv6Address": {
+                    "description": "IP IPv6 fixo",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.EndpointSettings": {
+            "type": "object",
+            "properties": {
+                "Aliases": {
+                    "description": "nomes alternativos na rede",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "DriverOpts": {
+                    "description": "opções do driver de rede",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "EndpointID": {
+                    "description": "ID do endpoint nesta rede",
+                    "type": "string"
+                },
+                "Gateway": {
+                    "description": "gateway desta rede",
+                    "type": "string"
+                },
+                "GlobalIPv6Address": {
+                    "description": "IP IPv6 global",
+                    "type": "string"
+                },
+                "GlobalIPv6PrefixLen": {
+                    "description": "prefixo IPv6",
+                    "type": "integer"
+                },
+                "IPAMConfig": {
+                    "description": "configuração de IP (nil = automático)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.EndpointIPAMConfig"
+                        }
+                    ]
+                },
+                "IPAddress": {
+                    "description": "IP do container nesta rede",
+                    "type": "string"
+                },
+                "IPPrefixLen": {
+                    "description": "tamanho do prefixo CIDR",
+                    "type": "integer"
+                },
+                "IPv6Gateway": {
+                    "description": "gateway IPv6",
+                    "type": "string"
+                },
+                "Links": {
+                    "description": "links para outros containers",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "MacAddress": {
+                    "description": "endereço MAC nesta rede",
+                    "type": "string"
+                },
+                "NetworkID": {
+                    "description": "ID da rede",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.GraphDriverData": {
+            "type": "object",
+            "properties": {
+                "Data": {
+                    "description": "dados internos do driver (camadas, etc.)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Name": {
+                    "description": "nome do driver (ex: \"overlay2\")",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.Health": {
+            "type": "object",
+            "properties": {
+                "FailingStreak": {
+                    "description": "quantas verificações consecutivas falharam",
+                    "type": "integer"
+                },
+                "Log": {
+                    "description": "histórico das últimas verificações",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.HealthLog"
+                    }
+                },
+                "Status": {
+                    "description": "\"healthy\", \"unhealthy\", \"starting\", \"none\"",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.HealthLog": {
+            "type": "object",
+            "properties": {
+                "End": {
+                    "description": "fim da verificação (RFC3339)",
+                    "type": "string"
+                },
+                "ExitCode": {
+                    "description": "0=healthy, 1=unhealthy, 2=reserved",
+                    "type": "integer"
+                },
+                "Output": {
+                    "description": "saída do comando de verificação",
+                    "type": "string"
+                },
+                "Start": {
+                    "description": "início da verificação (RFC3339)",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.HealthcheckConfig": {
+            "type": "object",
+            "properties": {
+                "Interval": {
+                    "description": "intervalo entre verificações (nanosegundos)",
+                    "type": "integer"
+                },
+                "Retries": {
+                    "description": "falhas consecutivas antes de marcar unhealthy",
+                    "type": "integer"
+                },
+                "StartPeriod": {
+                    "description": "período inicial de graça (nanosegundos)",
+                    "type": "integer"
+                },
+                "Test": {
+                    "description": "comando: [\"CMD\", \"curl\", \"-f\", \"http://localhost\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Timeout": {
+                    "description": "timeout de cada verificação (nanosegundos)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.HostConfig": {
+            "type": "object",
+            "properties": {
+                "Annotations": {
+                    "description": "anotações arbitrárias",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "AutoRemove": {
+                    "description": "remove container automaticamente ao parar",
+                    "type": "boolean"
+                },
+                "Binds": {
+                    "description": "── Montagens e arquivos ──────────────────────────────────────────────────",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "BlkioDeviceReadBps": {
+                    "description": "limite leitura (bytes/s)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.ThrottleDevice"
+                    }
+                },
+                "BlkioDeviceReadIOps": {
+                    "description": "limite leitura (ops/s)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.ThrottleDevice"
+                    }
+                },
+                "BlkioDeviceWriteBps": {
+                    "description": "limite escrita (bytes/s)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.ThrottleDevice"
+                    }
+                },
+                "BlkioDeviceWriteIOps": {
+                    "description": "limite escrita (ops/s)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.ThrottleDevice"
+                    }
+                },
+                "BlkioWeight": {
+                    "description": "I/O de bloco",
+                    "type": "integer"
+                },
+                "BlkioWeightDevice": {
+                    "description": "peso por dispositivo",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.WeightDevice"
+                    }
+                },
+                "CapAdd": {
+                    "description": "── Segurança ─────────────────────────────────────────────────────────────",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "CapDrop": {
+                    "description": "capabilities Linux removidas",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Cgroup": {
+                    "description": "cgroup pai customizado",
+                    "type": "string"
+                },
+                "CgroupParent": {
+                    "description": "cgroup pai (ex: \"/docker\")",
+                    "type": "string"
+                },
+                "CgroupnsMode": {
+                    "description": "namespace de cgroup: \"private\" ou \"host\"",
+                    "type": "string"
+                },
+                "ConsoleSize": {
+                    "description": "tamanho do terminal [linhas, colunas]",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ContainerIDFile": {
+                    "description": "arquivo para salvar o ID do container",
+                    "type": "string"
+                },
+                "CpuCount": {
+                    "description": "número de CPUs (Windows)",
+                    "type": "integer"
+                },
+                "CpuPercent": {
+                    "description": "percentual de CPU (Windows)",
+                    "type": "integer"
+                },
+                "CpuPeriod": {
+                    "description": "período do CFS scheduler (microssegundos)",
+                    "type": "integer"
+                },
+                "CpuQuota": {
+                    "description": "quota de CPU no período (microssegundos)",
+                    "type": "integer"
+                },
+                "CpuRealtimePeriod": {
+                    "description": "período de CPU realtime",
+                    "type": "integer"
+                },
+                "CpuRealtimeRuntime": {
+                    "description": "runtime de CPU realtime",
+                    "type": "integer"
+                },
+                "CpuShares": {
+                    "description": "── Limites de recursos ───────────────────────────────────────────────────\nCPU",
+                    "type": "integer"
+                },
+                "CpusetCpus": {
+                    "description": "CPUs permitidas (ex: \"0-3\", \"0,2\")",
+                    "type": "string"
+                },
+                "CpusetMems": {
+                    "description": "nós NUMA permitidos",
+                    "type": "string"
+                },
+                "DeviceCgroupRules": {
+                    "description": "regras cgroup para dispositivos",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "DeviceRequests": {
+                    "description": "requisições CDI (ex: GPU)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.DeviceRequest"
+                    }
+                },
+                "Devices": {
+                    "description": "Dispositivos",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.DeviceMapping"
+                    }
+                },
+                "Dns": {
+                    "description": "servidores DNS customizados",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "DnsOptions": {
+                    "description": "opções do resolv.conf",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "DnsSearch": {
+                    "description": "domínios de busca DNS",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ExtraHosts": {
+                    "description": "entradas /etc/hosts extras",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "GroupAdd": {
+                    "description": "grupos Unix adicionais para o processo",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "IOMaximumBandwidth": {
+                    "description": "máximo de banda I/O (Windows)",
+                    "type": "integer"
+                },
+                "IOMaximumIOps": {
+                    "description": "máximo de IOPS (Windows)",
+                    "type": "integer"
+                },
+                "IpcMode": {
+                    "description": "namespace IPC: \"private\", \"host\", \"shareable\"",
+                    "type": "string"
+                },
+                "Isolation": {
+                    "description": "isolamento (principalmente Windows)",
+                    "type": "string"
+                },
+                "Links": {
+                    "description": "── Comunicação ───────────────────────────────────────────────────────────",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "LogConfig": {
+                    "description": "── Log ───────────────────────────────────────────────────────────────────",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.LogConfig"
+                        }
+                    ]
+                },
+                "MaskedPaths": {
+                    "description": "caminhos ocultados dentro do container",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Memory": {
+                    "description": "Memória",
+                    "type": "integer"
+                },
+                "MemoryReservation": {
+                    "description": "reserva flexível de memória",
+                    "type": "integer"
+                },
+                "MemorySwap": {
+                    "description": "memória + swap (-1 = sem limite)",
+                    "type": "integer"
+                },
+                "MemorySwappiness": {
+                    "description": "tendência de swap (0-100, nil = padrão)",
+                    "type": "integer"
+                },
+                "NanoCpus": {
+                    "description": "limite de CPU em nanoCPUs (1e9 = 1 CPU)",
+                    "type": "integer"
+                },
+                "NetworkMode": {
+                    "description": "── Rede ──────────────────────────────────────────────────────────────────",
+                    "type": "string"
+                },
+                "OomKillDisable": {
+                    "description": "desativa o OOM killer (nil = padrão)",
+                    "type": "boolean"
+                },
+                "OomScoreAdj": {
+                    "description": "── Ajuste OOM ────────────────────────────────────────────────────────────",
+                    "type": "integer"
+                },
+                "PidMode": {
+                    "description": "── Namespaces ────────────────────────────────────────────────────────────",
+                    "type": "string"
+                },
+                "PidsLimit": {
+                    "description": "PIDs e I/O máximo",
+                    "type": "integer"
+                },
+                "PortBindings": {
+                    "description": "mapeamento porta container → host",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/godocker.PortBinding"
+                        }
+                    }
+                },
+                "Privileged": {
+                    "description": "acesso total ao host (perigoso)",
+                    "type": "boolean"
+                },
+                "PublishAllPorts": {
+                    "description": "expõe todas as portas automaticamente",
+                    "type": "boolean"
+                },
+                "ReadonlyPaths": {
+                    "description": "caminhos somente leitura dentro do container",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ReadonlyRootfs": {
+                    "description": "filesystem raiz somente leitura",
+                    "type": "boolean"
+                },
+                "RestartPolicy": {
+                    "description": "── Restart ───────────────────────────────────────────────────────────────",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.RestartPolicy"
+                        }
+                    ]
+                },
+                "Runtime": {
+                    "description": "runtime OCI (ex: \"runc\", \"nvidia\")",
+                    "type": "string"
+                },
+                "SecurityOpt": {
+                    "description": "opções de segurança (SELinux, AppArmor, seccomp)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ShmSize": {
+                    "description": "── Memória compartilhada e IPC ───────────────────────────────────────────",
+                    "type": "integer"
+                },
+                "StorageOpt": {
+                    "description": "── Armazenamento ─────────────────────────────────────────────────────────",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Sysctls": {
+                    "description": "── Sysctls e runtime ─────────────────────────────────────────────────────",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Tmpfs": {
+                    "description": "mountpoints tmpfs: {\"/tmp\": \"size=100m\"}",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "UTSMode": {
+                    "description": "namespace UTS: \"\" ou \"host\"",
+                    "type": "string"
+                },
+                "Ulimits": {
+                    "description": "limites do sistema (ulimit)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Ulimit"
+                    }
+                },
+                "UsernsMode": {
+                    "description": "namespace de usuário: \"\" ou \"host\"",
+                    "type": "string"
+                },
+                "VolumeDriver": {
+                    "description": "driver de volume padrão",
+                    "type": "string"
+                },
+                "VolumesFrom": {
+                    "description": "herda volumes de outros containers",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "godocker.IPAMConfig": {
+            "type": "object",
+            "properties": {
+                "AuxiliaryAddresses": {
+                    "description": "endereços reservados",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Gateway": {
+                    "description": "ex: \"172.18.0.1\"",
+                    "type": "string"
+                },
+                "IPRange": {
+                    "description": "range alocável (ex: \"172.18.5.0/24\")",
+                    "type": "string"
+                },
+                "Subnet": {
+                    "description": "ex: \"172.18.0.0/16\"",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.Image": {
+            "type": "object",
+            "properties": {
+                "Created": {
+                    "description": "RepoDigests []string          `json:\"RepoDigests\"`             // digests do registry",
+                    "type": "integer"
+                },
+                "Labels": {
+                    "description": "SharedSize  int64             `json:\"SharedSize\"`              // tamanho compartilhado com outras imagens\nVirtualSize int64             `json:\"VirtualSize,omitempty\"`   // tamanho virtual total",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "RepoTags": {
+                    "description": "ParentID    string            `json:\"ParentId\"`                // ID da imagem pai (vazio para base)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Size": {
+                    "description": "tamanho real em bytes",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "ID da imagem (sha256:...)",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.LogConfig": {
+            "type": "object",
+            "properties": {
+                "Config": {
+                    "description": "opções específicas do driver (ex: max-size, max-file)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Type": {
+                    "description": "driver: \"json-file\", \"syslog\", \"none\", etc.",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.MemoryStats": {
+            "type": "object",
+            "properties": {
+                "failcnt": {
+                    "description": "contagem de falhas de alocação",
+                    "type": "integer"
+                },
+                "limit": {
+                    "description": "limite máximo de memória (bytes)",
+                    "type": "integer"
+                },
+                "max_usage": {
+                    "description": "pico de uso de memória (bytes)",
+                    "type": "integer"
+                },
+                "stats": {
+                    "description": "métricas detalhadas do cgroup (cache, rss, etc.)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "usage": {
+                    "description": "uso atual de memória (bytes)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.MountPoint": {
+            "type": "object",
+            "properties": {
+                "Destination": {
+                    "description": "caminho dentro do container",
+                    "type": "string"
+                },
+                "Driver": {
+                    "description": "driver do volume (ex: \"local\")",
+                    "type": "string"
+                },
+                "Mode": {
+                    "description": "modo de montagem (ex: \"ro\", \"rw\", \"z\")",
+                    "type": "string"
+                },
+                "Name": {
+                    "description": "nome do volume (se Type=\"volume\")",
+                    "type": "string"
+                },
+                "Propagation": {
+                    "description": "propagação de bind: \"rprivate\", \"shared\", etc.",
+                    "type": "string"
+                },
+                "RW": {
+                    "description": "true = leitura+escrita, false = somente leitura",
+                    "type": "boolean"
+                },
+                "Source": {
+                    "description": "caminho no host ou nome do volume",
+                    "type": "string"
+                },
+                "Type": {
+                    "description": "\"bind\", \"volume\" ou \"tmpfs\"",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.Network": {
+            "type": "object",
+            "properties": {
+                "Attachable": {
+                    "description": "true = containers podem se conectar manualmente",
+                    "type": "boolean"
+                },
+                "ConfigFrom": {
+                    "description": "referência de configuração (Swarm)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ConfigReference"
+                        }
+                    ]
+                },
+                "ConfigOnly": {
+                    "description": "true = apenas configuração, sem instância real",
+                    "type": "boolean"
+                },
+                "Containers": {
+                    "description": "containers conectados: ID → info",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/godocker.NetworkContainer"
+                    }
+                },
+                "Created": {
+                    "description": "data de criação (RFC3339)",
+                    "type": "string"
+                },
+                "Driver": {
+                    "description": "\"bridge\", \"overlay\", \"host\", \"none\", etc.",
+                    "type": "string"
+                },
+                "EnableIPv6": {
+                    "description": "true se IPv6 está habilitado",
+                    "type": "boolean"
+                },
+                "IPAM": {
+                    "description": "configuração de gerenciamento de IPs",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.NetworkIPAM"
+                        }
+                    ]
+                },
+                "Id": {
+                    "description": "ID único da rede",
+                    "type": "string"
+                },
+                "Ingress": {
+                    "description": "true = rede de ingress do Swarm",
+                    "type": "boolean"
+                },
+                "Internal": {
+                    "description": "true = sem acesso externo",
+                    "type": "boolean"
+                },
+                "Labels": {
+                    "description": "labels da rede",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Name": {
+                    "description": "nome da rede",
+                    "type": "string"
+                },
+                "Options": {
+                    "description": "opções do driver de rede",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Scope": {
+                    "description": "\"local\" ou \"swarm\"",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.NetworkContainer": {
+            "type": "object",
+            "properties": {
+                "EndpointID": {
+                    "description": "ID do endpoint nesta rede",
+                    "type": "string"
+                },
+                "IPv4Address": {
+                    "description": "IP do container com CIDR (ex: \"172.18.0.2/16\")",
+                    "type": "string"
+                },
+                "IPv6Address": {
+                    "description": "IP IPv6 do container (se configurado)",
+                    "type": "string"
+                },
+                "MacAddress": {
+                    "description": "endereço MAC do container nesta rede",
+                    "type": "string"
+                },
+                "Name": {
+                    "description": "nome do container",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.NetworkIPAM": {
+            "type": "object",
+            "properties": {
+                "Config": {
+                    "description": "configurações de subnet (pode haver várias)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.IPAMConfig"
+                    }
+                },
+                "Driver": {
+                    "description": "driver IPAM: \"default\" ou customizado",
+                    "type": "string"
+                },
+                "Options": {
+                    "description": "opções do driver IPAM",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "godocker.NetworkSettings": {
+            "type": "object",
+            "properties": {
+                "Bridge": {
+                    "description": "nome da bridge padrão",
+                    "type": "string"
+                },
+                "EndpointID": {
+                    "description": "ID do endpoint na rede padrão",
+                    "type": "string"
+                },
+                "Gateway": {
+                    "description": "gateway da rede padrão",
+                    "type": "string"
+                },
+                "GlobalIPv6Address": {
+                    "description": "endereço IPv6 global",
+                    "type": "string"
+                },
+                "GlobalIPv6PrefixLen": {
+                    "description": "prefixo do IPv6 global",
+                    "type": "integer"
+                },
+                "HairpinMode": {
+                    "description": "modo hairpin (tráfego local)",
+                    "type": "boolean"
+                },
+                "IPAddress": {
+                    "description": "IP do container na rede padrão",
+                    "type": "string"
+                },
+                "IPPrefixLen": {
+                    "description": "tamanho do prefixo da rede",
+                    "type": "integer"
+                },
+                "IPv6Gateway": {
+                    "description": "gateway IPv6",
+                    "type": "string"
+                },
+                "LinkLocalIPv6Address": {
+                    "description": "endereço IPv6 link-local",
+                    "type": "string"
+                },
+                "LinkLocalIPv6PrefixLen": {
+                    "description": "prefixo do IPv6 link-local",
+                    "type": "integer"
+                },
+                "MacAddress": {
+                    "description": "endereço MAC do container",
+                    "type": "string"
+                },
+                "Networks": {
+                    "description": "todas as redes conectadas",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/godocker.EndpointSettings"
+                    }
+                },
+                "Ports": {
+                    "description": "portas mapeadas (porta/proto → binding)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/godocker.PortBinding"
+                        }
+                    }
+                },
+                "SandboxID": {
+                    "description": "ID do sandbox de rede",
+                    "type": "string"
+                },
+                "SandboxKey": {
+                    "description": "caminho do namespace de rede",
+                    "type": "string"
+                },
+                "SecondaryIPAddresses": {
+                    "description": "IPs IPv4 secundários",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Address"
+                    }
+                },
+                "SecondaryIPv6Addresses": {
+                    "description": "IPs IPv6 secundários",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Address"
+                    }
+                }
+            }
+        },
+        "godocker.NetworkStatsEntry": {
+            "type": "object",
+            "properties": {
+                "rx_bytes": {
+                    "description": "bytes recebidos",
+                    "type": "integer"
+                },
+                "rx_dropped": {
+                    "description": "pacotes descartados na recepção",
+                    "type": "integer"
+                },
+                "rx_errors": {
+                    "description": "erros de recepção",
+                    "type": "integer"
+                },
+                "rx_packets": {
+                    "description": "pacotes recebidos",
+                    "type": "integer"
+                },
+                "tx_bytes": {
+                    "description": "bytes transmitidos",
+                    "type": "integer"
+                },
+                "tx_dropped": {
+                    "description": "pacotes descartados na transmissão",
+                    "type": "integer"
+                },
+                "tx_errors": {
+                    "description": "erros de transmissão",
+                    "type": "integer"
+                },
+                "tx_packets": {
+                    "description": "pacotes transmitidos",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.ObjectVersion": {
+            "type": "object",
+            "properties": {
+                "Index": {
+                    "description": "índice monotonicamente crescente do Raft",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.PeerNode": {
+            "type": "object",
+            "properties": {
+                "Addr": {
+                    "description": "endereço (host:porta)",
+                    "type": "string"
+                },
+                "NodeID": {
+                    "description": "ID do nó",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.PidsStats": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "description": "número atual de processos/threads",
+                    "type": "integer"
+                },
+                "limit": {
+                    "description": "limite máximo configurado",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.PluginsInfo": {
+            "type": "object",
+            "properties": {
+                "Authorization": {
+                    "description": "plugins de autorização",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Log": {
+                    "description": "plugins de log (ex: [\"awslogs\",\"json-file\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Network": {
+                    "description": "plugins de rede (ex: [\"bridge\",\"host\",\"overlay\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Volume": {
+                    "description": "plugins de volume (ex: [\"local\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "godocker.Port": {
+            "type": "object",
+            "properties": {
+                "IP": {
+                    "description": "IP do host (ex: \"0.0.0.0\")",
+                    "type": "string"
+                },
+                "PrivatePort": {
+                    "description": "porta dentro do container",
+                    "type": "integer"
+                },
+                "PublicPort": {
+                    "description": "porta exposta no host (0 se não exposta)",
+                    "type": "integer"
+                },
+                "Type": {
+                    "description": "protocolo: \"tcp\" ou \"udp\"",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.PortBinding": {
+            "type": "object",
+            "properties": {
+                "HostIp": {
+                    "description": "IP do host onde a porta será vinculada (ex: \"0.0.0.0\")",
+                    "type": "string"
+                },
+                "HostPort": {
+                    "description": "porta do host como string (ex: \"8080\")",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.RestartPolicy": {
+            "type": "object",
+            "properties": {
+                "MaximumRetryCount": {
+                    "description": "apenas para \"on-failure\": máximo de tentativas",
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "\"no\", \"always\", \"on-failure\", \"unless-stopped\"",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.Runtime": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "description": "caminho do binário do runtime",
+                    "type": "string"
+                },
+                "runtimeArgs": {
+                    "description": "argumentos extras para o runtime",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "godocker.Stats": {
+            "type": "object",
+            "properties": {
+                "blkio_stats": {
+                    "description": "métricas de I/O de disco",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.BlkioStats"
+                        }
+                    ]
+                },
+                "cpu_stats": {
+                    "description": "uso de CPU no momento atual",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.CPUStats"
+                        }
+                    ]
+                },
+                "id": {
+                    "description": "ID do container",
+                    "type": "string"
+                },
+                "memory_stats": {
+                    "description": "uso de memória",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.MemoryStats"
+                        }
+                    ]
+                },
+                "name": {
+                    "description": "nome do container",
+                    "type": "string"
+                },
+                "networks": {
+                    "description": "métricas de rede por interface",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/godocker.NetworkStatsEntry"
+                    }
+                },
+                "num_procs": {
+                    "description": "número de processos (Windows)",
+                    "type": "integer"
+                },
+                "pids_stats": {
+                    "description": "contagem de processos/threads",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.PidsStats"
+                        }
+                    ]
+                },
+                "precpu_stats": {
+                    "description": "uso de CPU no momento anterior",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.CPUStats"
+                        }
+                    ]
+                },
+                "preread": {
+                    "description": "timestamp da leitura anterior",
+                    "type": "string"
+                },
+                "read": {
+                    "description": "timestamp da leitura atual",
+                    "type": "string"
+                },
+                "storage_stats": {
+                    "description": "métricas de armazenamento (Windows)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.StorageStats"
+                        }
+                    ]
+                }
+            }
+        },
+        "godocker.StorageStats": {
+            "type": "object",
+            "properties": {
+                "read_count_normalized": {
+                    "description": "contagem de leituras",
+                    "type": "integer"
+                },
+                "read_size_bytes": {
+                    "description": "bytes lidos",
+                    "type": "integer"
+                },
+                "write_count_normalized": {
+                    "description": "contagem de escritas",
+                    "type": "integer"
+                },
+                "write_size_bytes": {
+                    "description": "bytes escritos",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.SwarmInfo": {
+            "type": "object",
+            "properties": {
+                "Cluster": {
+                    "description": "informações do cluster (nil se não manager)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.ClusterInfo"
+                        }
+                    ]
+                },
+                "ControlAvailable": {
+                    "description": "true se este nó é um manager",
+                    "type": "boolean"
+                },
+                "Error": {
+                    "description": "mensagem de erro (se houver)",
+                    "type": "string"
+                },
+                "LocalNodeState": {
+                    "description": "\"inactive\", \"pending\", \"active\", \"error\", \"locked\"",
+                    "type": "string"
+                },
+                "Managers": {
+                    "description": "total de managers no cluster",
+                    "type": "integer"
+                },
+                "NodeAddr": {
+                    "description": "endereço anunciado do nó",
+                    "type": "string"
+                },
+                "NodeID": {
+                    "description": "ID do nó neste cluster (vazio se inativo)",
+                    "type": "string"
+                },
+                "Nodes": {
+                    "description": "total de nós no cluster",
+                    "type": "integer"
+                },
+                "RemoteManagers": {
+                    "description": "outros managers conhecidos",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.PeerNode"
+                    }
+                }
+            }
+        },
+        "godocker.SwarmSpec": {
+            "type": "object",
+            "properties": {
+                "Name": {
+                    "description": "nome do cluster (ex: \"default\")",
+                    "type": "string"
+                }
+            }
+        },
+        "godocker.ThrottleDevice": {
+            "type": "object",
+            "properties": {
+                "Path": {
+                    "description": "caminho do dispositivo (ex: \"/dev/sda\")",
+                    "type": "string"
+                },
+                "Rate": {
+                    "description": "taxa em bytes/s ou operações/s dependendo do campo pai",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.ThrottlingData": {
+            "type": "object",
+            "properties": {
+                "periods": {
+                    "description": "total de períodos de enforcement",
+                    "type": "integer"
+                },
+                "throttled_periods": {
+                    "description": "períodos onde houve throttling",
+                    "type": "integer"
+                },
+                "throttled_time": {
+                    "description": "tempo total throttled (nanosegundos)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.Ulimit": {
+            "type": "object",
+            "properties": {
+                "Hard": {
+                    "description": "limite rígido — não pode ser ultrapassado",
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "nome do limite (ex: \"nofile\" para arquivos abertos)",
+                    "type": "string"
+                },
+                "Soft": {
+                    "description": "limite flexível — processo pode ultrapassar até o Hard",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.Volume": {
+            "type": "object",
+            "properties": {
+                "CreatedAt": {
+                    "description": "data de criação (RFC3339)",
+                    "type": "string"
+                },
+                "Driver": {
+                    "description": "driver do volume (ex: \"local\")",
+                    "type": "string"
+                },
+                "Labels": {
+                    "description": "labels do volume",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Mountpoint": {
+                    "description": "caminho real no host",
+                    "type": "string"
+                },
+                "Name": {
+                    "description": "nome do volume",
+                    "type": "string"
+                },
+                "Options": {
+                    "description": "opções do driver (ex: type, device)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Scope": {
+                    "description": "\"local\" ou \"global\" (swarm)",
+                    "type": "string"
+                },
+                "Status": {
+                    "description": "status do driver (depende do driver)",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "UsageData": {
+                    "description": "dados de uso (nil se não disponível)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/godocker.VolumeUsageData"
+                        }
+                    ]
+                }
+            }
+        },
+        "godocker.VolumeUsageData": {
+            "type": "object",
+            "properties": {
+                "RefCount": {
+                    "description": "número de containers usando este volume",
+                    "type": "integer"
+                },
+                "Size": {
+                    "description": "tamanho total em bytes (-1 se desconhecido)",
+                    "type": "integer"
+                }
+            }
+        },
+        "godocker.WeightDevice": {
+            "type": "object",
+            "properties": {
+                "Path": {
+                    "description": "caminho do dispositivo (ex: \"/dev/sda\")",
+                    "type": "string"
+                },
+                "Weight": {
+                    "description": "peso relativo de 10 a 1000",
+                    "type": "integer"
+                }
+            }
+        },
+        "main.allData": {
+            "type": "object",
+            "properties": {
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Container"
+                    }
+                },
+                "daemon": {
+                    "$ref": "#/definitions/godocker.DockerInfo"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Image"
+                    }
+                },
+                "networks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Network"
+                    }
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/godocker.Volume"
+                    }
+                }
+            }
+        },
+        "main.apiResp": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.route": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "params": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.statusResp": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

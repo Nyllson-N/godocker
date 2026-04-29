@@ -1,0 +1,8 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8081:80/tcp"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    restart: unless-stopped
